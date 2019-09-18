@@ -8,6 +8,14 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include "wintools.h"
+
+#ifdef  _WIN32
+	#pragma warning( disable : 4101)
+#else
+	#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+	#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
 
 // #define REGENERATE_AAD_FUNCTION
 #define USE_AVX_256
@@ -27,9 +35,6 @@ typedef __m512d mmType;
 #define MM_ADD _mm512_add_pd
 #define MM_SET1 _mm512_set1_pd
 #endif
-
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#pragma GCC diagnostic ignored "-Wunused-variable"
 
 #ifndef REGENERATE_AAD_FUNCTION
     #include "mySuperModelFuncAAD.h"
@@ -66,7 +71,8 @@ int main() {
     ////////////////////////////////
 
     double primal_res = mySuperModelFunc(x,a);
-    std::cout << "primal(" << x << "," << a << ") = " << primal_res << std::endl;
+	std::cout << "Primal function & FD derivatives:\n";
+    std::cout << "f(" << x << "," << a << ") = " << primal_res << std::endl;
 
     ////////////////////////////////
     // Estimate primal derivatives using FD
@@ -75,8 +81,8 @@ int main() {
     double fd_da = (mySuperModelFunc(x, a+h) - mySuperModelFunc(x, a-h)) / (2*h);    
     double fd_dx = (mySuperModelFunc(x+h, a) - mySuperModelFunc(x-h, a)) / (2*h);    
 
-    std::cout << "FD dx = " << fd_dx << std::endl;
-    std::cout << "FD da = " << fd_da << std::endl;
+    std::cout << "dx = " << fd_dx << std::endl;
+    std::cout << "da = " << fd_da << std::endl;
 
     ////////////////////////////////
     // Recording AAD version of the primal function using scalar double type
@@ -106,9 +112,10 @@ int main() {
         1.0
     );
 
-    std::cout << "Compiled function (" << x << "," << a << ") = " << aad_res << std::endl;
-    std::cout << "AAD dx = " << aad_dx << std::endl;
-    std::cout << "AAD da = " << aad_da << std::endl;
+	std::cout << "\nCompiled function & AAD derivatives (scalar case):\n";
+    std::cout << "f(" << x << "," << a << ") = " << aad_res << std::endl;
+    std::cout << "dx = " << aad_dx << std::endl;
+    std::cout << "da = " << aad_da << std::endl;
 
     if (fabs(aad_res - primal_res) > 1e-10) {
         std::cout << "ERROR: Compiled and primal didn't match!!! Rebuild function?" << std::endl;
@@ -152,10 +159,10 @@ int main() {
 		}
 
     }
-    cout << "Integral of Primal function\n";
-    cout << "Result   : " << sc_result/double(iterations) << "\n";
-    cout << "FD da    : " << (sc_result_bump - sc_result)/fd_bump/double(iterations) << "\n";
-    cout << "Exec time: " << base_time.count() << "\n";
+    cout << "\nIntegral of Primal function & FD derivative:\n";
+    cout << "f() = " << sc_result/double(iterations) << "\n";
+    cout << "da  = " << (sc_result_bump - sc_result)/fd_bump/double(iterations) << "\n";
+    cout << "time= " << base_time.count() << "\n";
 
     #ifdef REGENERATE_AAD_FUNCTION
     ////////////////////////////////
@@ -190,12 +197,16 @@ int main() {
             MM_SET1(1.0)
         );
 
-        std::cout << "AVX" << sizeof(mmType)*8 << std::endl;
-        std::cout << "AVX Compiled function (" << x << "," << a << ") = " << aad_res[0] << std::endl;
-        std::cout << "AVX AAD dx = " << aad_dx[0] << std::endl;
-        std::cout << "AVX AAD da = " << aad_da[0] << std::endl;
+		double y  = unpack(aad_res)[0];
+		double dx = unpack(aad_dx)[0];
+		double da = unpack(aad_da)[0];
 
-        if (fabs(aad_res[0] - primal_res) > 1e-10) {
+        std::cout << "\nCompiled function & AAD derivatives (" << "AVX" << sizeof(mmType) * 8 << ")\n";
+        std::cout << "f (" << x << "," << a << ") = " << y << std::endl;
+        std::cout << "dx = " << dx << std::endl;
+        std::cout << "da = " << da << std::endl;
+
+        if (fabs(y - primal_res) > 1e-10) {
             std::cout << "ERROR: Compiled and primal didn't match!!! Rebuild function?" << std::endl;
         }
     }
@@ -218,9 +229,7 @@ int main() {
         // Run recorded function with arbitrary inputs
         mmType avx_res, aad_dx(MM_SET1(0.0)), avx_a(MM_SET1(a)), avx_da_sum(MM_SET1(0.0));
         mmType avx_res_sum(MM_SET1(0.0));
-//        double res_sum(0.0), da_sum(0.0);
                
-        auto record_start = std::chrono::high_resolution_clock::now();
         for(uint64_t i=0; i<iterations/AVXCount; i++) {
             mmType avx_da = MM_SET1(0.0);
             mySuperModelFuncAAD(
@@ -233,26 +242,30 @@ int main() {
             avx_da_sum = MM_ADD(avx_da, avx_da_sum);
         }
     
-        for (int i=0; i<AVXCount; i++) { 
-            res_sum += avx_res_sum[i];
-            da_sum += avx_da_sum[i];
-        }
-
-        auto record_stop = std::chrono::high_resolution_clock::now();
-        std::chrono::microseconds record_time = std::chrono::duration_cast<std::chrono::microseconds>(record_stop - record_start);
-        
-        std::cout << "Integral Vector thread " << thread_id << " time:" << record_time.count() << "\n";    
+		double* _avx_res_sum = unpack(avx_res_sum);
+		double* _avx_da_sum  = unpack(avx_da_sum);
+		for (int i = 0; i < AVXCount; i++) {
+			res_sum += _avx_res_sum[i];
+			da_sum += _avx_da_sum[i];
+		}
     };
     double res_sum(0.0), da_sum(0.0);
-    processMCSamples(res_sum, da_sum, a, random_vector, iterations, 0);
-    cout << "Integral Vector Result " << res_sum/iterations << "\n";
-    cout << "Integral Vector Result da " << da_sum/iterations << "\n";
+	auto record_start = std::chrono::high_resolution_clock::now();
+	processMCSamples(res_sum, da_sum, a, random_vector, iterations, 0);
+	auto record_stop = std::chrono::high_resolution_clock::now();
+	std::chrono::microseconds record_time = std::chrono::duration_cast<std::chrono::microseconds>(record_stop - record_start);
+
+	cout << std::endl;
+	cout << "Integral[0,1] of AVX AAD function using Monte-Carlo & 1 thread:\n";
+    cout << "f() = " << res_sum/iterations << "\n";
+    cout << "da  = " << da_sum/iterations << "\n";
+	cout << "time= " << record_time.count() << "\n";
 
     ////////////////////////////////
     // Compute integral_0^1 using MC with AVX AAD function in multi-thread
     ////////////////////////////////
     {
-    cout << "//////// AVX MT case" << std::endl;
+		// cout << "//////// AVX MT case" << std::endl;
         int num_threads = 4;
         std::vector<double> integral_parts(num_threads), da_parts(num_threads); 
         double mt_integral(0.0), mt_da(0.0);
@@ -284,12 +297,15 @@ int main() {
         auto record_stop = std::chrono::high_resolution_clock::now();
         std::chrono::microseconds record_time = std::chrono::duration_cast<std::chrono::microseconds>(record_stop - record_start);
         
-        cout << "AVX MT" << num_threads << " Vector Result " << mt_integral << "\n";
-        cout << "AVX MT" << num_threads << " Vector Result da " << mt_da << "\n";
-        cout << "AVX MT" << num_threads << " Vector walk clock time: " << record_time.count() << "\n";
+		cout << std::endl;
+		cout << "Integral[0,1] of AVX AAD function using Monte-Carlo & " << num_threads  << " threads" << ":\n";
+		cout << "f() = " << mt_integral << "\n";
+		cout << "da  = " << mt_da << "\n";
+		cout << "time= " << record_time.count() << "\n";
     }
     #endif // REGENERATE_AAD_FUNCTION
-    free(random_vector);
+
+	aligned_free(random_vector);
 
     return 0;
 }

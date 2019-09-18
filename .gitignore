@@ -1,2 +1,5 @@
 /.idea/
 /cmake-build-debug/
+/.vs
+/x64
+*.user
