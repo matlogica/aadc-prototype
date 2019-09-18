@@ -28,6 +28,8 @@ typedef __m512d mmType;
 #define MM_SET1 _mm512_set1_pd
 #endif
 
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 
 #ifndef REGENERATE_AAD_FUNCTION
     #include "mySuperModelFuncAAD.h"
@@ -150,9 +152,10 @@ int main() {
 		}
 
     }
-    cout << "Integral Scalar result    :" << sc_result/double(iterations) << "\n";
-    cout << "Integral Scalar derivative:" << (sc_result_bump - sc_result)/fd_bump/double(iterations) << "\n";
-    std::cout << "Integral Scalar time:" << base_time.count() << "\n";            
+    cout << "Integral of Primal function\n";
+    cout << "Result   : " << sc_result/double(iterations) << "\n";
+    cout << "FD da    : " << (sc_result_bump - sc_result)/fd_bump/double(iterations) << "\n";
+    cout << "Exec time: " << base_time.count() << "\n";
 
     #ifdef REGENERATE_AAD_FUNCTION
     ////////////////////////////////
