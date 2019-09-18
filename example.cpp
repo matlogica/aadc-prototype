@@ -8,14 +8,16 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
-#include "wintools.h"
 
 #ifdef  _WIN32
 	#pragma warning( disable : 4101)
 #else
 	#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 	#pragma GCC diagnostic ignored "-Wunused-variable"
+	#pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
+
+#include "wintools.h"
 
 // #define REGENERATE_AAD_FUNCTION
 #define USE_AVX_256
@@ -222,8 +224,7 @@ int main() {
         double &da_sum,
         double a,
         const double* random_vector,
-        const uint64_t iterations,
-        const uint64_t thread_id
+        const uint64_t iterations
     )
     {
         // Run recorded function with arbitrary inputs
@@ -251,7 +252,7 @@ int main() {
     };
     double res_sum(0.0), da_sum(0.0);
 	auto record_start = std::chrono::high_resolution_clock::now();
-	processMCSamples(res_sum, da_sum, a, random_vector, iterations, 0);
+	processMCSamples(res_sum, da_sum, a, random_vector, iterations);
 	auto record_stop = std::chrono::high_resolution_clock::now();
 	std::chrono::microseconds record_time = std::chrono::duration_cast<std::chrono::microseconds>(record_stop - record_start);
 
@@ -281,7 +282,6 @@ int main() {
                         , a
                         , random_vector + i * (iterations/num_threads)
                         , iterations/num_threads
-                        , i
                     )
                 )
             );
