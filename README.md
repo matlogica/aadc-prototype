@@ -5,17 +5,14 @@
 That library is a prototype implementation of automatic adjoint differentiation (AAD) approach developed by MatLogica.
 Please check website for more information: http://www.matlogica.com/
 
-As an example, we attempt to differentiate code recoded inside 
+As an example, we attempt to differentiate code recorded inside 
 function mySuperModelFunc() and calculate derivatives using:
 * finite-differences method
 * AAD method using double scalar function
 * AAD method using AVX256 or AVX512 vector   
 
-## Requirements
-
-Library was tested to compile with GCC, CLang & Intel compilers on Linux platform
- 
 ## Build and Run
+Library was tested to compile with GCC, CLang & Intel compilers on Linux platform
 
 Run the following commands to build the project: 
 * mkdir build
