@@ -12,9 +12,11 @@ function mySuperModelFunc() and calculate derivatives using:
 * AAD method using AVX256 or AVX512 vector   
 
 ## Build and Run
-Library was tested to compile with GCC, CLang & Intel compilers on Linux platform
+Library was tested to compile with GCC, CLang & Intel compilers on Linux platform and MSVC on Windows. 
 
-Run the following commands to build the project: 
+On Windows, just open solution file aadc.sln using Visual Studio.
+ 
+On Linux, run the following commands to build the project: 
 * mkdir build
 * cd build
 * cmake ..
